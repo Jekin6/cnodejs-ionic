@@ -3,6 +3,8 @@
     <button ng-if="user.loginname == loginName" class="button button-clear" ng-click="logout()">退出</button>
   </ion-nav-buttons>
   <ion-content class="has-header user">
+    <ion-refresher pulling-text="下拉刷新..." on-refresh="doRefresh()" refreshing-icon="ion-loading-c">
+    </ion-refresher>
     <ion-list>
       <ion-item class="item-divider item-gap">
       </ion-item>
@@ -13,12 +15,9 @@
         <p>
         注册于：{{user.create_at | amDateFormat:'YYYY-MM-DD hh:mm:ss'}}
         </p>
-      </ion-item>
-      <ion-item ng-if="user.loginname == loginName" href="#/my/messages">
-        我的消息
-        <span ng-if="messagesCount" class="badge badge-assertive messagesCount">
-          {{messagesCount > 9 ? 'N' : messagesCount}}
-        </span>
+        <p>
+        <a href="#/user/{{user.loginname}}/collections">{{user.collect_topics.length}}话题收藏</a>
+        </p>
       </ion-item>
       <ion-item class="item-divider">
         最近主题

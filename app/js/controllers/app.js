@@ -9,11 +9,11 @@
  */
 
 angular.module('cnodejs.controllers')
-.controller('AppCtrl', function(ENV, $scope, $log, $timeout, $rootScope, $ionicPopup, $ionicLoading, Tabs, User, Messages, Settings) {
+.controller('AppCtrl', function(ENV, $scope, $log, $timeout, $rootScope, $ionicPopup, $ionicLoading, Tabs, User, Messages, Settings, Push) {
   $log.log('app ctrl');
 
   // get message count
-  var getMessageCount = function() {
+  $rootScope.getMessageCount = function() {
     Messages.getMessageCount().$promise.then(function(response) {
       $scope.messagesCount = response.data;
       setBadge($scope.messagesCount);
@@ -25,11 +25,14 @@ angular.module('cnodejs.controllers')
   // environment config
   $scope.ENV = ENV;
 
+  // ionic platform
+  $scope.platform = ionic.Platform;
+
   // get current user
   var currentUser = User.getCurrentUser();
   $scope.loginName = currentUser.loginname || null;
   if ($scope.loginName !== null) {
-    getMessageCount();
+    $rootScope.getMessageCount();
   }
 
   // get user settings
@@ -65,6 +68,7 @@ angular.module('cnodejs.controllers')
       cordova.plugins.notification.badge.hasPermission(function (granted) {
         $log.debug('Permission has been granted: ' + granted);
         if (granted) {
+          $log.debug('set badge as', num);
           cordova.plugins.notification.badge.set(num);
         }
       });
@@ -74,28 +78,33 @@ angular.module('cnodejs.controllers')
   // app resume event
   document.addEventListener('resume', function onResume() {
     $log.log('app on resume');
-    getMessageCount();
+    if ($scope.loginName !== null) {
+      $rootScope.getMessageCount();
+    }
   }, false);
 
   // logout
   $rootScope.$on('logout', function() {
     $log.debug('logout broadcast handle');
     $scope.loginName = null;
+    $scope.messagesCount = 0;
     setBadge(0);
   });
 
   // update unread messages count
   $rootScope.$on('messagesMarkedAsRead', function() {
     $log.debug('message marked as read broadcast handle');
-    $scope.messagesCount = Messages.currentMessageCount();
+    $scope.messagesCount = 0;
     setBadge($scope.messagesCount);
+    // reset badge
+    Push.setBadge($scope.messagesCount);
   });
 
   // login action callback
   var loginCallback = function(response) {
     $ionicLoading.hide();
     $scope.loginName = response.loginname;
-    getMessageCount();
+    $rootScope.getMessageCount();
   };
 
   // on hold login action
@@ -135,33 +144,22 @@ angular.module('cnodejs.controllers')
       return;
     }
     if(window.cordova && window.cordova.plugins.barcodeScanner) {
-      $scope.processing = true;
-      $timeout(function() {
-        $scope.processing = false;
-      }, 500);
-      cordova.plugins.barcodeScanner.scan(
-        function (result) {
-          $scope.processing = false;
-          if (!result.cancelled) {
-            $log.log('get Access Token', result.text);
-            $ionicLoading.show();
-            User.login(result.text).$promise.then(loginCallback, $rootScope.requestErrorHandler());
+      var loginPrompt = $ionicPopup.show({
+        template: 'PC端登录cnodejs.org后，扫描设置页面的Access Token二维码即可完成登录',
+        title: '扫码登录',
+        scope: $scope,
+        buttons: [
+          {
+            text: '<b>我知道了</b>',
+            type: 'button-positive',
+            onTap: function(e) {
+              e.preventDefault();
+              loginPrompt.close();
+              dologin();
+            }
           }
-        },
-        function (error) {
-          $scope.processing = false;
-          $ionicLoading.show({
-            noBackdrop: true,
-            template: 'Scanning failed: ' + error,
-            duration: 1000
-          });
-        }
-      );
-
-      // track event
-      if (window.analytics) {
-        window.analytics.trackEvent('User', 'scan login');
-      }
+        ]
+      });
     } else {
       // auto login if in debug mode
       if (ENV.debug) {
@@ -173,6 +171,7 @@ angular.module('cnodejs.controllers')
         var loginPopup = $ionicPopup.show({
           template: '<input type="text" ng-model="data.token">',
           title: '输入Access Token',
+          subTitle: 'PC端登录cnodejs.org后，在设置页可以找到Access Token',
           scope: $scope,
           buttons: [
             { text: '取消' },
@@ -192,6 +191,35 @@ angular.module('cnodejs.controllers')
           ]
         });
       }
+    }
+  };
+  var dologin = function() {
+    $scope.processing = true;
+    $timeout(function() {
+      $scope.processing = false;
+    }, 500);
+    cordova.plugins.barcodeScanner.scan(
+      function (result) {
+        $scope.processing = false;
+        if (!result.cancelled) {
+          $log.log('get Access Token', result.text);
+          $ionicLoading.show();
+          User.login(result.text).$promise.then(loginCallback, $rootScope.requestErrorHandler());
+        }
+      },
+      function (error) {
+        $scope.processing = false;
+        $ionicLoading.show({
+          noBackdrop: true,
+          template: 'Scanning failed: ' + error,
+          duration: 1000
+        });
+      }
+    );
+
+    // track event
+    if (window.analytics) {
+      window.analytics.trackEvent('User', 'scan login');
     }
   };
 });

@@ -14,6 +14,14 @@ angular.module('cnodejs.services')
   var resource =  $resource(ENV.api + '/topic/:id', {
     id: '@id',
   }, {
+    collect: {
+      method: 'post',
+      url: ENV.api + '/topic/collect'
+    },
+    deCollect: {
+      method: 'post',
+      url: ENV.api + '/topic/de_collect'
+    },
     reply: {
       method: 'post',
       url: ENV.api + '/topic/:topicId/replies'
@@ -46,7 +54,7 @@ angular.module('cnodejs.services')
       var currentUser = User.getCurrentUser();
       // add send from
       if (Settings.getSettings().sendFrom) {
-        reply.content = replyData.content + '\n 发自 CNodeJs ionic';
+        reply.content = replyData.content + '\n 自豪地采用 [CNodeJS ionic](https://github.com/lanceli/cnodejs-ionic)';
       }
       return resource.reply({
         topicId: topicId,
@@ -64,7 +72,7 @@ angular.module('cnodejs.services')
           angular.forEach(topic.replies, function(reply, key) {
             if (reply.id === replyId) {
               if (response.action === 'up') {
-                reply.ups.push('');
+                reply.ups.push(currentUser.id);
               } else {
                 reply.ups.pop();
               }
@@ -73,6 +81,20 @@ angular.module('cnodejs.services')
         }
       }
       );
+    },
+    collectTopic: function(topicId) {
+      var currentUser = User.getCurrentUser();
+      return resource.collect({
+        topic_id: topicId,
+        accesstoken: currentUser.accesstoken
+      });
+    },
+    deCollectTopic: function(topicId) {
+      var currentUser = User.getCurrentUser();
+      return resource.deCollect({
+        topic_id: topicId,
+        accesstoken: currentUser.accesstoken
+      });
     }
   };
 });

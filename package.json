@@ -1,6 +1,6 @@
 {
   "name": "cnodejs",
-  "version": "1.1.1",
+  "version": "1.2.2",
   "private": true,
   "dependencies": {},
   "devDependencies": {
@@ -39,7 +39,8 @@
     "mkdirp": "~0.5.0",
     "ncp": "~0.6.0",
     "orchestrator": "~0.3.7",
-    "ripple-emulator": "~0.9.23"
+    "ripple-emulator": "~0.9.23",
+    "xml2js": "~0.4.4"
   },
   "engines": {
     "node": ">=0.10.0"
@@ -58,6 +59,8 @@
     "https://github.com/katzer/cordova-plugin-badge.git",
     "org.apache.cordova.dialogs",
     "https://github.com/katzer/cordova-plugin-email-composer.git",
-    "https://github.com/danwilson/google-analytics-plugin.git"
+    "https://github.com/danwilson/google-analytics-plugin.git",
+    "https://github.com/lanceli/jpush-phonegap-plugin",
+    "org.apache.cordova.device"
   ]
 }

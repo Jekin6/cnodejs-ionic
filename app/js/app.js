@@ -10,7 +10,7 @@ angular.module('cnodejs', [
   'cnodejs.config']
 )
 
-.run(function($ionicPlatform, $log, $timeout, amMoment, ENV) {
+.run(function($ionicPlatform, $log, $timeout, $state, $rootScope, amMoment, ENV, Push, User) {
 
   // set moment locale
   amMoment.changeLocale('zh-cn');
@@ -24,6 +24,34 @@ angular.module('cnodejs', [
     };
   }
 
+  // push notification callback
+  var notificationCallback = function(data, isActive) {
+    $log.debug(data);
+    var notif = angular.fromJson(data);
+    if (notif.extras) {
+      // android
+      if (notif.extras['cn.jpush.android.EXTRA']['topicId']) {
+        $state.go('app.topic', {
+          id: notif.extras['cn.jpush.android.EXTRA']['topicId']
+        });
+      } else {
+        $state.go('app.messages');
+      }
+    } else {
+      // ios
+      if (notif.topicId) {
+        if (isActive) {
+          $rootScope.getMessageCount();
+        } else {
+          $state.go('app.topic', {
+            id: notif.topicId
+          });
+        }
+      } else {
+        $state.go('app.messages');
+      }
+    }
+  };
   $ionicPlatform.ready(function() {
     if(window.cordova) {
 
@@ -38,24 +66,30 @@ angular.module('cnodejs', [
         cordova.plugins.Keyboard.hideKeyboardAccessoryBar(true);
         cordova.plugins.Keyboard.disableScroll(true);
       }
+    }
 
-      // Promot permission request to show badge notifications
-      if (window.cordova.plugins.notification.badge) {
-        $timeout(function() {
-          cordova.plugins.notification.badge.promptForPermission();
-        }, 100);
-      }
+    // push handler
+    Push.init(notificationCallback);
+
+    // detect current user have not set alias of jpush
+    var currentUser = User.getCurrentUser();
+    if (currentUser.id) {
+      Push.setAlias(currentUser.id);
     }
 
     if (navigator.splashscreen) {
       $timeout(function() {
         navigator.splashscreen.hide();
+
+        // check if have push after app launch
+        Push.check();
       }, 100);
     } else {
       $log.debug('no splash screen plugin');
     }
 
   });
+
 })
 .config(function(ENV, $stateProvider, $urlRouterProvider, $logProvider) {
 
@@ -73,6 +107,15 @@ angular.module('cnodejs', [
         'menuContent': {
           templateUrl: 'templates/user.html',
           controller: 'UserCtrl'
+        }
+      }
+    })
+    .state('app.user_collections', {
+      url: '/user/:loginname/collections',
+      views: {
+        'menuContent': {
+          templateUrl: 'templates/user_collections.html',
+          controller: 'UserCollectionsCtrl'
         }
       }
     })
